@@ -71,8 +71,6 @@
         </div>
         
 
-
-       
         <div class="form-group">
             <input class="form-control" type="submit" name="insertar" value="Enviar">
         </div>
