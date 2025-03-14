@@ -1,267 +1,151 @@
 <?php
+/*
+  Controlador de Productos
+ 
+  Este controlador gestiona todas las operaciones relacionadas con los productos,
+  incluyendo listar, ver detalles, añadir nuevos productos y eliminar productos existentes.
+ */
+include_once './models/productos.php';
+include_once './vistas/view.php';
 
-include './models/productos.php';
-include './vistas/view.php';
-    class ProductosController{
-
+class ProductosController {
+    /*
+      Muestra el formulario para añadir productos
+      
+      Renderiza la vista con el formulario para añadir un nuevo producto.
+     */
+    public function showProductos() {
+        View::show('addProduct', null);
+    }
+    
+    /*
+      Lista todos los productos disponibles
+      
+      Obtiene todos los productos de la base de datos y los envía
+      a la vista de listado de productos.
+     */
+    public function listarProductos() {
+        $productos = new ProductosTienda();
+        $data = $productos->getProductos();
         
-        public function showProductos(){
-            View::show('addProduct',null);
-
-        }
-        public function listarProductos(){
-            $productos = new ProductosTienda();
-            $data = $productos->getProductos();
-            
-            View::show('listarproductos', $data);
-        }
-        public function verDetalleProducto() {
-            if(isset($_GET['id'])) {
-                $productoId = $_GET['id'];
-                
-                $productos = new ProductosTienda();
-                $producto = $productos->getProductoPorId($productoId);
-                
-                if($producto) {
-                    View::show('detalleProducto', $producto);
-                } else {
-                    header('Location: index.php?controller=ProductosController&action=getProductos');
-                }
-            } else {
-                header('Location: index.php?controller=ProductosController&action=getProductos');
-            }
-        }
-        public function aniadirProduct (){
-            $errores=array();
-            if(isset($_POST['insertar'])){
-                if(!isset($_POST['imagen']) || strlen($_POST['imagen']) == 0){
-                    $errores['imagen']="El campo imagen no puede estar vacio";
-                }
-                if(!isset($_POST['nombre']) || strlen($_POST['nombre']) == 0){
-                    $errores['nombre']="El campo nombre no puede estar vacio";
-                }
-                if (!isset($_POST['descripcion_corta']) || strlen($_POST['descripcion_corta']) < 10) {
-                    $errores['descripcion_corta']="La descripción debe tener al menos 10 caracteres";   
-                }
-                if (!isset($_POST['descripcion']) || strlen($_POST['descripcion']) < 20) {
-                    $errores['descripcion']="La descripción debe tener al menos 20 caracteres";   
-                } 
-                if (!isset($_POST['precio']) || strlen($_POST['precio']) == 0){
-                    $errores['precio']="El precio no puede estar vacío.";
-                }
-                if (!isset($_POST['cantidad']) || strlen($_POST['cantidad']) == 0){
-                    $errores['cantidad']="La cantidad no puede estar vacía.";
-                }
-
-                if (empty($errores)){
-                    $productosDAO=new ProductosTienda();
-                    
-                    if ($productosDAO->insertarProducto($_POST['imagen'], $_POST['nombre'], $_POST['descripcion_corta'], $_POST['descripcion'], $_POST['precio'], $_POST['cantidad'])) {
-                        header('Location: index.php');
-                        exit;
-                    } else {
-                        View::show("addProduct", $errores);  
-                    }
-                }else{ 
-                    View::show('addProduct',$errores);
-                }
-
-            }else{
-                View::show('addProduct',null);
-            }
-                
-        }
-        public function mostrarProductosAdmin() {
-            if (!isset($_SESSION['rol']) || $_SESSION['rol'] != 'admin') {
-                header('Location: index.php');
-                exit;
-            }
+        View::show('listarproductos', $data);
+    }
+    
+    /*
+      Muestra los detalles de un producto específico
+      
+      Recibe el ID del producto vía GET, busca sus datos en la base de datos
+      y muestra la vista de detalle. Si el producto no existe o no se proporciona ID,
+      redirige al listado general de productos.
+     */
+    public function verDetalleProducto() {
+        if(isset($_GET['id'])) {
+            $productoId = $_GET['id'];
             
             $productos = new ProductosTienda();
-            $data = $productos->getProductos();
+            $producto = $productos->getProductoPorId($productoId);
             
-            View::show('delPorduct', $data);
-        }
-        public function eliminarProducto() {
-            if (!isset($_SESSION['rol']) || $_SESSION['rol'] != 'admin') {
-                header('Location: index.php');
-                exit;
-            }
-            
-            if(isset($_GET['id'])) {
-                $productoId = $_GET['id'];
-                
-                $productos = new ProductosTienda();
-                if($productos->eliminarProducto($productoId)) {
-                    header('Location: index.php?controller=ProductosController&action=mostrarProductosAdmin');
-                } else {
-                    // Error al eliminar
-                    header('Location: index.php?controller=ProductosController&action=mostrarProductosAdmin&error=1');
-                }
+            if($producto) {
+                View::show('detalleProducto', $producto);
             } else {
-                header('Location: index.php?controller=ProductosController&action=mostrarProductosAdmin');
+                header('Location: index.php?controller=ProductosController&action=listarProductos');
             }
-        }
-        public function login() {
-            View::show('login');
-        }
-        
-        public function verificarLogin() {
-            include_once './models/usuarios.php';
-            
-            $errores = array();
-            
-            if (isset($_POST['enviar'])) {
-                $usuario = $_POST['usuario'];
-                $password = $_POST['password'];
-                
-                if (empty($usuario)) {
-                    $errores['usuario'] = "El usuario no puede estar vacío";
-                }
-                
-                if (empty($password)) {
-                    $errores['password'] = "La contraseña no puede estar vacía";
-                }
-                
-                if (empty($errores)) {
-                    $usuariosDAO = new Usuarios();
-                    $user = $usuariosDAO->verificarUsuario($usuario, $password);
-                    
-                    if ($user) {
-                        if (session_status() == PHP_SESSION_NONE) {
-                            session_start();
-                        }
-                        
-                        $_SESSION['usuario'] = $usuario;
-                        $_SESSION['id_usuario'] = $user->id;
-                        $_SESSION['rol'] = $user->rol;
-                        
-                        header('Location: index.php');
-                        exit;
-                    } else {
-                        $errores['login'] = "Usuario o contraseña incorrectos";
-                        View::show('login', $errores);
-                    }
-                } else {
-                    View::show('login', $errores);
-                }
-            } else {
-                View::show('login', null);
-            }
-        }
-        public function logout() {
-            if (session_status() == PHP_SESSION_NONE) {
-                session_start();
-            }
-            
-            $_SESSION = array();
-            
-            session_destroy();
-            
-            header('Location: index.php');
-            exit;
-        }
-        public function addToCart() {
-            if(isset($_GET['id'])) {
-                $productId = $_GET['id'];
-                
-                if (session_status() == PHP_SESSION_NONE) {
-                    session_start();
-                }
-                
-                $carritoId = isset($_SESSION['id_usuario']) ? 'user_'.$_SESSION['id_usuario'] : session_id();
-                
-                if(!isset($_SESSION['carrito'])) {
-                    $_SESSION['carrito'] = array();
-                }
-                
-                if(!isset($_SESSION['carrito'][$carritoId])) {
-                    $_SESSION['carrito'][$carritoId] = array();
-                }
-                
-                if(isset($_SESSION['carrito'][$carritoId][$productId])) {
-                    $_SESSION['carrito'][$carritoId][$productId]++;
-                } else {
-                    $_SESSION['carrito'][$carritoId][$productId] = 1;
-                }
-                
-                header('Location: index.php');
-            }
-        }
-        
-        public function verCarrito() {
-            if (session_status() == PHP_SESSION_NONE) {
-                session_start();
-            }
-            
-            $carritoId = isset($_SESSION['id_usuario']) ? 'user_'.$_SESSION['id_usuario'] : session_id();
-            
-            if(!isset($_SESSION['carrito'])) {
-                $_SESSION['carrito'] = array();
-            }
-            
-            if(!isset($_SESSION['carrito'][$carritoId])) {
-                $_SESSION['carrito'][$carritoId] = array();
-            }
-            
-            $carrito = array();
-            if(!empty($_SESSION['carrito'][$carritoId])) {
-                $productos = new ProductosTienda();
-                $todosProductos = $productos->getProductos();
-                
-                $productosPorId = array();
-                foreach($todosProductos as $producto) {
-                    $productosPorId[$producto->id] = $producto;
-                }
-                
-                // Construir el carrito con detalles del producto
-                foreach($_SESSION['carrito'][$carritoId] as $productoId => $cantidad) {
-                    if(isset($productosPorId[$productoId])) {
-                        $item = $productosPorId[$productoId];
-                        $item->cantidad = $cantidad;
-                        $item->subtotal = $cantidad * $item->precio;
-                        $carrito[] = $item;
-                    }
-                }
-            }
-            View::show('carrito', $carrito);
-        }
-        
-        public function eliminarDelCarrito() {
-            if(isset($_GET['id'])) {
-                $productoId = $_GET['id'];
-                
-                if (session_status() == PHP_SESSION_NONE) {
-                    session_start();
-                }
-                
-                $carritoId = isset($_SESSION['id_usuario']) ? 'user_'.$_SESSION['id_usuario'] : session_id();
-                
-                if(isset($_SESSION['carrito'][$carritoId][$productoId])) {
-                    unset($_SESSION['carrito'][$carritoId][$productoId]);
-                }
-                
-                header('Location: index.php?controller=ProductosController&action=verCarrito');
-            }
-        }
-        public function finalizarCompra() {
-            if (session_status() == PHP_SESSION_NONE) {
-                session_start();
-            }
-            
-            if (!isset($_SESSION['usuario'])) {
-                header('Location: index.php?controller=ProductosController&action=login');
-                exit;
-            }
-
-            $carritoId = 'user_'.$_SESSION['id_usuario'];
-            if (isset($_SESSION['carrito'][$carritoId])) {
-                $_SESSION['carrito'][$carritoId] = array();
-            }
-            
-            View::show('fincompra', null);
+        } else {
+            header('Location: index.php?controller=ProductosController&action=listarProductos');
         }
     }
     
+    /*
+      Procesa la adición de un nuevo producto
+      
+      Valida los campos del formulario, muestra errores si los hay,
+      o inserta el nuevo producto en la base de datos si todo es correcto.
+      Incluye validaciones para cada campo del producto.
+     */
+    public function aniadirProduct() {
+        $errores = array();
+        if(isset($_POST['insertar'])) {
+            if(!isset($_POST['imagen']) || strlen($_POST['imagen']) == 0) {
+                $errores['imagen'] = "El campo imagen no puede estar vacio";
+            }
+            if(!isset($_POST['nombre']) || strlen($_POST['nombre']) == 0) {
+                $errores['nombre'] = "El campo nombre no puede estar vacio";
+            }
+            if(!isset($_POST['descripcion_corta']) || strlen($_POST['descripcion_corta']) < 10) {
+                $errores['descripcion_corta'] = "La descripción debe tener al menos 10 caracteres";   
+            }
+            if(!isset($_POST['descripcion']) || strlen($_POST['descripcion']) < 20) {
+                $errores['descripcion'] = "La descripción debe tener al menos 20 caracteres";   
+            } 
+            if(!isset($_POST['precio']) || strlen($_POST['precio']) == 0) {
+                $errores['precio'] = "El precio no puede estar vacío.";
+            }
+            if(!isset($_POST['cantidad']) || strlen($_POST['cantidad']) == 0) {
+                $errores['cantidad'] = "La cantidad no puede estar vacía.";
+            }
 
+            if(empty($errores)) {
+                $productosDAO = new ProductosTienda();
+                
+                if($productosDAO->insertarProducto($_POST['imagen'], $_POST['nombre'], $_POST['descripcion_corta'], $_POST['descripcion'], $_POST['precio'], $_POST['cantidad'])) {
+                    header('Location: index.php');
+                    exit;
+                } else {
+                    View::show("addProduct", $errores);  
+                }
+            } else { 
+                View::show('addProduct', $errores);
+            }
+        } else {
+            View::show('addProduct', null);
+        }
+    }
+    
+    /*
+      Muestra la interfaz de administración de productos
+      
+      Verifica que el usuario tenga rol de administrador, redirige si no.
+      Obtiene todos los productos y los muestra en la vista de administración
+      donde se pueden eliminar.
+     */
+    public function mostrarProductosAdmin() {
+        if(!isset($_SESSION['rol']) || $_SESSION['rol'] != 'admin') {
+            header('Location: index.php');
+            exit;
+        }
+        
+        $productos = new ProductosTienda();
+        $data = $productos->getProductos();
+        
+        View::show('delPorduct', $data);
+    }
+    
+    /*
+      Elimina un producto específico
+      
+      Verifica que el usuario tenga rol de administrador.
+     Recibe el ID del producto vía GET y lo elimina de la base de datos,
+      redirigiendo después a la vista de administración de productos.
+     */
+    public function eliminarProducto() {
+        if(!isset($_SESSION['rol']) || $_SESSION['rol'] != 'admin') {
+            header('Location: index.php');
+            exit;
+        }
+        
+        if(isset($_GET['id'])) {
+            $productoId = $_GET['id'];
+            
+            $productos = new ProductosTienda();
+            if($productos->eliminarProducto($productoId)) {
+                header('Location: index.php?controller=ProductosController&action=mostrarProductosAdmin');
+            } else {
+                // Error al eliminar
+                header('Location: index.php?controller=ProductosController&action=mostrarProductosAdmin&error=1');
+            }
+        } else {
+            header('Location: index.php?controller=ProductosController&action=mostrarProductosAdmin');
+        }
+    }
+}
 ?>
