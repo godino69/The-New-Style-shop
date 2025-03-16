@@ -6,6 +6,7 @@
         <div class="alert alert-info">
             No hay productos disponibles.
         </div>
+        <!-- Botones para añadir un nuevo producto o volver a la tienda -->
         <div class="mt-3">
             <a href="index.php?controller=ProductosController&action=showProductos" class="btn btn-primary">Añadir Nuevo Producto</a>
             <a href="index.php" class="btn btn-secondary">Volver a Tienda</a>
